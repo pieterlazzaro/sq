@@ -258,7 +258,7 @@ func (c ConflictClause) WriteSQL(ctx context.Context, dialect string, buf *bytes
 // SetFetchableFields implements the Query interface.
 func (q InsertQuery) SetFetchableFields(fields []Field) (query Query, ok bool) {
 	switch q.Dialect {
-	case DialectPostgres, DialectSQLite:
+	case DialectPostgres, DialectSQLite, DialectSQLServer:
 		if len(q.ReturningFields) == 0 {
 			q.ReturningFields = fields
 			return q, true
@@ -272,7 +272,7 @@ func (q InsertQuery) SetFetchableFields(fields []Field) (query Query, ok bool) {
 // GetFetchableFields returns the fetchable fields of the query.
 func (q InsertQuery) GetFetchableFields() []Field {
 	switch q.Dialect {
-	case DialectPostgres, DialectSQLite:
+	case DialectPostgres, DialectSQLite, DialectSQLServer:
 		return q.ReturningFields
 	default:
 		return nil
@@ -646,5 +646,10 @@ func (q SQLServerInsertQuery) GetDialect() string { return q.Dialect }
 // SetDialect returns the dialect of the query.
 func (q SQLServerInsertQuery) SetDialect(dialect string) SQLServerInsertQuery {
 	q.Dialect = dialect
+	return q
+}
+
+func (q SQLServerInsertQuery) Output(fields ...Field) SQLServerInsertQuery {
+	q.ReturningFields = append(q.ReturningFields, fields...)
 	return q
 }

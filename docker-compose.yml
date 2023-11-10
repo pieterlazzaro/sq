@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_USER: 'user1'
+      POSTGRES_PASSWORD: 'Hunter2!'
+      POSTGRES_DB: 'sakila'
+    # options: >-
+    #   --health-cmd pg_isready
+    #   --health-interval 10s
+    #   --health-timeout 5s
+    #   --health-retries 5
+    ports:
+      - '5456:5432'
+  mysql:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 'Hunter2!'
+      MYSQL_USER: 'user1'
+      MYSQL_PASSWORD: 'Hunter2!'
+      MYSQL_DATABASE: 'sakila'
+    # options: >-
+    #   --health-cmd "mysqladmin ping"
+    #   --health-interval 10s
+    #   --health-timeout 5s
+    #   --health-retries 5
+    #   --health-start-period 30s
+    ports:
+      - '3330:3306'
+  sqlserver:
+    image: 'mcr.microsoft.com/azure-sql-edge'
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: 'Hunter2!'
+    # options: >-
+    #   --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Hunter2! -Q 'select 1' -b -o /dev/null"
+    #   --health-interval 10s
+    #   --health-timeout 5s
+    #   --health-retries 5
+    #   --health-start-period 30s
+    ports:
+      - '1447:1433'

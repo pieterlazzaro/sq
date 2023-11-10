@@ -410,28 +410,6 @@ func TestSQLServerInsertQuery(t *testing.T) {
 	}
 	a := New[ACTOR]("")
 
-	t.Run("basic", func(t *testing.T) {
-		t.Parallel()
-		q1 := SQLServer.InsertInto(a).SetDialect("lorem ipsum")
-		if diff := testutil.Diff(q1.GetDialect(), "lorem ipsum"); diff != "" {
-			t.Error(testutil.Callers(), diff)
-		}
-		q1 = q1.SetDialect(DialectSQLServer)
-		fields := q1.GetFetchableFields()
-		if len(fields) != 0 {
-			t.Error(testutil.Callers(), "expected 0 fields but got %v", fields)
-		}
-		_, ok := q1.SetFetchableFields([]Field{a.LAST_NAME})
-		if ok {
-			t.Fatal(testutil.Callers(), "field should not have been set")
-		}
-		q1.ReturningFields = q1.ReturningFields[:0]
-		_, ok = q1.SetFetchableFields([]Field{a.LAST_NAME})
-		if ok {
-			t.Fatal(testutil.Callers(), "field should not have been set")
-		}
-	})
-
 	t.Run("Columns Values", func(t *testing.T) {
 		t.Parallel()
 		var tt TestTable
@@ -481,6 +459,32 @@ func TestSQLServerInsertQuery(t *testing.T) {
 			" INSERT INTO actor (first_name, last_name)" +
 			" SELECT actor.first_name, actor.last_name FROM actor"
 		tt.assert(t)
+	})
+
+	t.Run("Output", func(t *testing.T) {
+		t.Parallel()
+		var tt TestTable
+
+		tt.item = SQLServer.
+			InsertInto(a).
+			Columns(a.FIRST_NAME, a.LAST_NAME).
+			Values("PENELOPE", "GUINESS").
+			Values("NICK", "WAHLBERG").
+			Values("ED", "CHASE").
+			Output(a.ACTOR_ID, a.FIRST_NAME, a.LAST_NAME)
+
+		tt.wantQuery = "INSERT INTO actor " +
+			"(first_name, last_name) " +
+			"OUTPUT INSERTED.actor_id, INSERTED.first_name, INSERTED.last_name " +
+			"VALUES (@p1, @p2), (@p3, @p4), (@p5, @p6)"
+
+		tt.wantArgs = []any{
+			"PENELOPE", "GUINESS",
+			"NICK", "WAHLBERG",
+			"ED", "CHASE",
+		}
+		tt.assert(t)
+
 	})
 }
 
