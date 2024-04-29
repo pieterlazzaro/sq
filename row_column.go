@@ -28,6 +28,26 @@ type Row struct {
 	columnTypes   []*sql.ColumnType
 	values        []any
 	columnIndex   map[string]int
+	hasData       bool
+}
+
+// IsDummyRun returns true when the row doesn't have any data loaded and is instead
+// populating fields.
+func (row *Row) IsDummyRun() bool {
+	return row.sqlRows == nil && !row.hasData
+}
+
+func (row *Row) Load(fn func(destPtrs []any) error) error {
+	if err := fn(row.scanDest); err != nil {
+		return err
+	}
+	row.hasData = true
+	row.runningIndex = 0
+	return nil
+}
+
+func (row *Row) Fields() []Field {
+	return row.fields
 }
 
 // Column returns the names of the columns returned by the query. This method
@@ -104,7 +124,7 @@ func (row *Row) Value(format string, values ...any) any {
 		}
 		return row.values[index]
 	}
-	if row.sqlRows == nil {
+	if row.IsDummyRun() {
 		var value any
 		row.fields = append(row.fields, Expr(format, values...))
 		row.scanDest = append(row.scanDest, &value)
@@ -134,7 +154,7 @@ func (row *Row) ScanField(destPtr any, field Field) {
 }
 
 func (row *Row) scan(destPtr any, field Field, skip int) {
-	if row.sqlRows == nil {
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		switch destPtr.(type) {
 		case *bool, *sql.NullBool:
@@ -226,7 +246,7 @@ func (row *Row) ArrayField(destPtr any, field Array) {
 }
 
 func (row *Row) array(destPtr any, field Array, skip int) {
-	if row.sqlRows == nil {
+	if row.IsDummyRun() {
 		if reflect.TypeOf(destPtr).Kind() != reflect.Ptr {
 			panic(fmt.Errorf(callsite(skip+1)+"cannot pass in non pointer value (%#v) as destPtr", destPtr))
 		}
@@ -372,7 +392,8 @@ func (row *Row) BytesField(field Binary) []byte {
 	if row.queryIsStatic {
 		panic(fmt.Errorf(callsite(1) + "cannot call BytesField for static queries"))
 	}
-	if row.sqlRows == nil {
+
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		row.scanDest = append(row.scanDest, &nullBytes{
 			dialect: row.dialect,
@@ -492,7 +513,8 @@ func (row *Row) NullBoolField(field Boolean) sql.NullBool {
 	if row.queryIsStatic {
 		panic(fmt.Errorf(callsite(1) + "cannot call NullBoolField for static queries"))
 	}
-	if row.sqlRows == nil {
+
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		row.scanDest = append(row.scanDest, &sql.NullBool{})
 		return sql.NullBool{}
@@ -521,7 +543,7 @@ func (row *Row) EnumField(destPtr Enumeration, field Enum) {
 }
 
 func (row *Row) enum(destPtr Enumeration, field Enum, skip int) {
-	if row.sqlRows == nil {
+	if row.IsDummyRun() {
 		destType := reflect.TypeOf(destPtr)
 		if destType.Kind() != reflect.Ptr {
 			panic(fmt.Errorf(callsite(skip+1)+"cannot pass in non pointer value (%#v) as destPtr", destPtr))
@@ -643,7 +665,8 @@ func (row *Row) NullFloat64Field(field Number) sql.NullFloat64 {
 	if row.queryIsStatic {
 		panic(fmt.Errorf(callsite(1) + "cannot call NullFloat64Field for static queries"))
 	}
-	if row.sqlRows == nil {
+
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		row.scanDest = append(row.scanDest, &sql.NullFloat64{})
 		return sql.NullFloat64{}
@@ -781,7 +804,8 @@ func (row *Row) NullInt64Field(field Number) sql.NullInt64 {
 	if row.queryIsStatic {
 		panic(fmt.Errorf(callsite(1) + "cannot call NullInt64Field for static queries"))
 	}
-	if row.sqlRows == nil {
+
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		row.scanDest = append(row.scanDest, &sql.NullInt64{})
 		return sql.NullInt64{}
@@ -810,7 +834,7 @@ func (row *Row) JSONField(destPtr any, field JSON) {
 }
 
 func (row *Row) json(destPtr any, field JSON, skip int) {
-	if row.sqlRows == nil {
+	if row.IsDummyRun() {
 		if reflect.TypeOf(destPtr).Kind() != reflect.Ptr {
 			panic(fmt.Errorf(callsite(skip+1)+"cannot pass in non pointer value (%#v) as destPtr", destPtr))
 		}
@@ -907,7 +931,8 @@ func (row *Row) NullStringField(field String) sql.NullString {
 	if row.queryIsStatic {
 		panic(fmt.Errorf(callsite(1) + "cannot call NullStringField for static queries"))
 	}
-	if row.sqlRows == nil {
+
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		row.scanDest = append(row.scanDest, &sql.NullString{})
 		return sql.NullString{}
@@ -1019,7 +1044,8 @@ func (row *Row) NullTimeField(field Time) sql.NullTime {
 	if row.queryIsStatic {
 		panic(fmt.Errorf(callsite(1) + "cannot call NullTimeField for static queries"))
 	}
-	if row.sqlRows == nil {
+
+	if row.IsDummyRun() {
 		row.fields = append(row.fields, field)
 		row.scanDest = append(row.scanDest, &sql.NullTime{})
 		return sql.NullTime{}
@@ -1048,7 +1074,7 @@ func (row *Row) UUIDField(destPtr any, field UUID) {
 }
 
 func (row *Row) uuid(destPtr any, field UUID, skip int) {
-	if row.sqlRows == nil {
+	if row.IsDummyRun() {
 		if _, ok := destPtr.(*[16]byte); !ok {
 			if reflect.TypeOf(destPtr).Kind() != reflect.Ptr {
 				panic(fmt.Errorf(callsite(skip+1)+"cannot pass in non pointer value (%#v) as destPtr", destPtr))

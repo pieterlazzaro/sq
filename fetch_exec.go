@@ -169,7 +169,10 @@ func (cursor *Cursor[T]) RowCount() int64 { return cursor.queryStats.RowCount.In
 
 // Result returns the cursor result.
 func (cursor *Cursor[T]) Result() (result T, err error) {
-	err = cursor.row.sqlRows.Scan(cursor.row.scanDest...)
+	err = cursor.row.Load(func(destPtrs []any) error {
+		return cursor.row.sqlRows.Scan(destPtrs...)
+	})
+
 	if err != nil {
 		cursor.log()
 		fieldMappings := getFieldMappings(cursor.queryStats.Dialect, cursor.row.fields, cursor.row.scanDest)
