@@ -103,6 +103,9 @@ func (expr Expression) IsTime() {}
 // IsUUID implements the UUID interface.
 func (expr Expression) IsUUID() {}
 
+// IsDate implements the Date interface.
+func (expr Expression) IsDate() {}
+
 func (e Expression) IsAssignment() {}
 
 // CustomQuery represents a user-defined query.

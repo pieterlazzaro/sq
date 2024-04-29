@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/golang-sql/civil"
 )
 
 // Identifier represents an SQL identifier. If necessary, it will be quoted
@@ -181,6 +183,9 @@ func (field AnyField) IsTime() {}
 
 // IsUUIDType implements the UUID interface.
 func (field AnyField) IsUUID() {}
+
+// IsDate implements the Date interface.
+func (field AnyField) IsDate() {}
 
 // ArrayField represents an SQL array field.
 type ArrayField struct {
@@ -1165,6 +1170,150 @@ func (field TimeField) IsField() {}
 // IsTime implements the Time interface.
 func (field TimeField) IsTime() {}
 
+// TimeField represents an SQL time field.
+type DateField struct {
+	table      TableStruct
+	name       string
+	alias      string
+	desc       sql.NullBool
+	nullsfirst sql.NullBool
+}
+
+var _ interface {
+	Field
+	Date
+	WithPrefix(string) Field
+} = (*DateField)(nil)
+
+// NewDateField returns a new DateField.
+func NewDateField(name string, tbl TableStruct) DateField {
+	return DateField{table: tbl, name: name}
+}
+
+// WriteSQL implements the SQLWriter interface.
+func (field DateField) WriteSQL(ctx context.Context, dialect string, buf *bytes.Buffer, args *[]any, params map[string][]int) error {
+	writeFieldIdentifier(ctx, dialect, buf, args, params, field.table, field.name)
+	writeFieldOrder(ctx, dialect, buf, args, params, field.desc, field.nullsfirst)
+	return nil
+}
+
+// As returns a new DateField with the given alias.
+func (field DateField) As(alias string) DateField {
+	field.alias = alias
+	return field
+}
+
+// Asc returns a new DateField indicating that it should be ordered in ascending
+// order i.e. 'ORDER BY field ASC'.
+func (field DateField) Asc() DateField {
+	field.desc.Valid = true
+	field.desc.Bool = false
+	return field
+}
+
+// Desc returns a new DateField indicating that it should be ordered in ascending
+// order i.e. 'ORDER BY field DESC'.
+func (field DateField) Desc() DateField {
+	field.desc.Valid = true
+	field.desc.Bool = true
+	return field
+}
+
+// NullsLast returns a new DateField indicating that it should be ordered
+// with nulls last i.e. 'ORDER BY field NULLS LAST'.
+func (field DateField) NullsLast() DateField {
+	field.nullsfirst.Valid = true
+	field.nullsfirst.Bool = false
+	return field
+}
+
+// NullsFirst returns a new DateField indicating that it should be ordered
+// with nulls first i.e. 'ORDER BY field NULLS FIRST'.
+func (field DateField) NullsFirst() DateField {
+	field.nullsfirst.Valid = true
+	field.nullsfirst.Bool = true
+	return field
+}
+
+// WithPrefix returns a new Field that with the given prefix.
+func (field DateField) WithPrefix(prefix string) Field {
+	field.table.alias = ""
+	field.table.name = prefix
+	return field
+}
+
+// IsNull returns a 'field IS NULL' Predicate.
+func (field DateField) IsNull() Predicate { return Expr("{} IS NULL", field) }
+
+// IsNotNull returns a 'field IS NOT NULL' Predicate.
+func (field DateField) IsNotNull() Predicate { return Expr("{} IS NOT NULL", field) }
+
+// In returns a 'field IN (value)' Predicate. The value can be a slice, which
+// corresponds to the expression 'field IN (x, y, z)'.
+func (field DateField) In(value any) Predicate { return In(field, value) }
+
+// NotIn returns a 'field NOT IN (value)' Predicate. The value can be a slice,
+// which corresponds to the expression 'field NOT IN (x, y, z)'.
+func (field DateField) NotIn(value any) Predicate { return NotIn(field, value) }
+
+// Eq returns a 'field = value' Predicate.
+func (field DateField) Eq(value Date) Predicate { return Eq(field, value) }
+
+// Ne returns a 'field <> value' Predicate.
+func (field DateField) Ne(value Date) Predicate { return Ne(field, value) }
+
+// Lt returns a 'field < value' Predicate.
+func (field DateField) Lt(value Date) Predicate { return Lt(field, value) }
+
+// Le returns a 'field <= value' Predicate.
+func (field DateField) Le(value Date) Predicate { return Le(field, value) }
+
+// Gt returns a 'field > value' Predicate.
+func (field DateField) Gt(value Date) Predicate { return Gt(field, value) }
+
+// Ge returns a 'field >= value' Predicate.
+func (field DateField) Ge(value Date) Predicate { return Ge(field, value) }
+
+// EqDate returns a 'field = t' Predicate.
+func (field DateField) EqDate(t civil.Date) Predicate { return Eq(field, t) }
+
+// NeDate returns a 'field <> t' Predicate.
+func (field DateField) NeDate(t civil.Date) Predicate { return Ne(field, t) }
+
+// LtDate returns a 'field < t' Predicate.
+func (field DateField) LtDate(t civil.Date) Predicate { return Lt(field, t) }
+
+// LeDate returns a 'field <= t' Predicate.
+func (field DateField) LeDate(t civil.Date) Predicate { return Le(field, t) }
+
+// GtDate returns a 'field > t' Predicate.
+func (field DateField) GtDate(t civil.Date) Predicate { return Gt(field, t) }
+
+// GeDate returns a 'field >= t' Predicate.
+func (field DateField) GeDate(t civil.Date) Predicate { return Ge(field, t) }
+
+// Set returns an Assignment assigning the value to the field.
+func (field DateField) Set(value any) Assignment {
+	return Set(field, value)
+}
+
+// Setf returns an Assignment assigning an expression to the field.
+func (field DateField) Setf(format string, values ...any) Assignment {
+	return Setf(field, format, values...)
+}
+
+// SetDate returns an Assignment assigning a time.Time to the field.
+func (field DateField) SetDate(t civil.Date) Assignment { return Set(field, t) }
+
+// GetAlias returns the alias of the DateField.
+func (field DateField) GetAlias() string { return field.alias }
+
+// IsField implements the Field interface.
+func (field DateField) IsField() {}
+
+// IsDate implements the Date interface.
+func (field DateField) IsDate() {}
+
 // Timestamp is as a replacement for sql.NullTime but with the following
 // enhancements:
 //
@@ -1496,6 +1645,8 @@ func New[T Table](alias string) T {
 			v.Set(reflect.ValueOf(NewStringField(name, tableStruct)))
 		case TimeField:
 			v.Set(reflect.ValueOf(NewTimeField(name, tableStruct)))
+		case DateField:
+			v.Set(reflect.ValueOf(NewDateField(name, tableStruct)))
 		case UUIDField:
 			v.Set(reflect.ValueOf(NewUUIDField(name, tableStruct)))
 		}

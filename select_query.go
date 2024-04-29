@@ -470,6 +470,9 @@ func (q SelectQuery) IsTime() {}
 // IsUUID implements the UUID interface.
 func (q SelectQuery) IsUUID() {}
 
+// IsDate implements the Date interface.
+func (q SelectQuery) IsDate() {}
+
 // SQLiteSelectQuery represents an SQLite SELECT query.
 type SQLiteSelectQuery SelectQuery
 
@@ -685,6 +688,9 @@ func (q SQLiteSelectQuery) IsTime() {}
 
 // IsUUID implements the UUID interface.
 func (q SQLiteSelectQuery) IsUUID() {}
+
+// IsDate implements the Date interface.
+func (q SQLiteSelectQuery) IsDate() {}
 
 // PostgresSelectQuery represents a Postgres SELECT query.
 type PostgresSelectQuery SelectQuery
@@ -948,6 +954,9 @@ func (q PostgresSelectQuery) IsUUID() {}
 // MySQLSelectQuery represents a MySQL SELECT query.
 type MySQLSelectQuery SelectQuery
 
+// IsDate implements the Date interface.
+func (q PostgresSelectQuery) IsDate() {}
+
 var _ interface {
 	Query
 	Table
@@ -1185,6 +1194,9 @@ func (q MySQLSelectQuery) IsTime() {}
 
 // IsUUID implements the UUID interface.
 func (q MySQLSelectQuery) IsUUID() {}
+
+// IsDate implements the Date interface.
+func (q MySQLSelectQuery) IsDate() {}
 
 // SQLServerSelectQuery represents an SQL Server SELECT query.
 type SQLServerSelectQuery SelectQuery
@@ -1431,3 +1443,6 @@ func (q SQLServerSelectQuery) IsTime() {}
 
 // IsUUID implements the UUID interface.
 func (q SQLServerSelectQuery) IsUUID() {}
+
+// IsDate implements the Date interface.
+func (q SQLServerSelectQuery) IsDate() {}

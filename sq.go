@@ -112,6 +112,7 @@ type Any interface {
 	String
 	Time
 	UUID
+	Date
 }
 
 // Enumeration represents a Go enum.
@@ -174,6 +175,12 @@ type String interface {
 type Time interface {
 	Field
 	IsTime()
+}
+
+// Date is a Field of time type.
+type Date interface {
+	Field
+	IsDate()
 }
 
 // UUID is a Field of uuid type.

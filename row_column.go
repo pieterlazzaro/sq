@@ -14,6 +14,7 @@ import (
 
 	"github.com/bokwoon95/sq/internal/googleuuid"
 	"github.com/bokwoon95/sq/internal/pqarray"
+	"github.com/golang-sql/civil"
 )
 
 // Row represents the state of a row after a call to rows.Next().
@@ -791,6 +792,20 @@ func (row *Row) NullInt64Field(field Number) sql.NullInt64 {
 	}()
 	scanDest := row.scanDest[row.runningIndex].(*sql.NullInt64)
 	return *scanDest
+}
+
+func (row *Row) DateField(field Date) civil.Date {
+	if row.IsDummyRun() {
+		row.fields = append(row.fields, field)
+		row.scanDest = append(row.scanDest, &sql.NullTime{})
+		return civil.Date{}
+	}
+	defer func() {
+		row.runningIndex++
+	}()
+	scanDest := row.scanDest[row.runningIndex].(*sql.NullTime)
+
+	return civil.DateOf(scanDest.Time)
 }
 
 // JSON scans the JSON expression into destPtr.

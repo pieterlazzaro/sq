@@ -88,6 +88,9 @@ func (e ValueExpression) IsTime() {}
 // IsUUID implements the UUID interface.
 func (e ValueExpression) IsUUID() {}
 
+// IsDate implements the Date interface
+func (e ValueExpression) IsDate() {}
+
 // LiteralValue represents an SQL value literally interpolated into the query.
 // Doing so potentially exposes the query to SQL injection so only do this for
 // values that you trust e.g. literals and constants.
@@ -258,6 +261,9 @@ func (e DialectExpression) IsTime() {}
 // IsUUID implements the UUID interface.
 func (e DialectExpression) IsUUID() {}
 
+// IsDate implements the Date interface
+func (e DialectExpression) IsDate() {}
+
 // CaseExpression represents an SQL CASE expression.
 type CaseExpression struct {
 	alias   string
@@ -367,6 +373,9 @@ func (e CaseExpression) IsTime() {}
 
 // IsUUID implements the UUID interface.
 func (e CaseExpression) IsUUID() {}
+
+// IsDate implements the Date interface
+func (e CaseExpression) IsDate() {}
 
 // SimpleCaseExpression represents an SQL simple CASE expression.
 type SimpleCaseExpression struct {
@@ -480,6 +489,9 @@ func (e SimpleCaseExpression) IsTime() {}
 
 // IsUUID implements the UUID interface.
 func (e SimpleCaseExpression) IsUUID() {}
+
+// IsDate implements the Date interface
+func (e SimpleCaseExpression) IsDate() {}
 
 // Count represents an SQL COUNT(<field>) expression.
 func Count(field Field) Expression { return Expr("COUNT({})", field) }
