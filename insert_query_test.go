@@ -486,6 +486,35 @@ func TestSQLServerInsertQuery(t *testing.T) {
 		tt.assert(t)
 
 	})
+
+	t.Run("Output Values", func(t *testing.T) {
+		t.Parallel()
+		var tt TestTable
+
+		tt.item = SQLServer.
+			InsertInto(a).
+			ColumnValues(func(col *Column) {
+				// bob
+				col.SetString(a.FIRST_NAME, "bob")
+				col.SetString(a.LAST_NAME, "the builder")
+				// alice
+				col.SetString(a.FIRST_NAME, "alice")
+				col.SetString(a.LAST_NAME, "in wonderland")
+			}).
+			Output(a.ACTOR_ID, a.FIRST_NAME, a.LAST_NAME)
+
+		tt.wantQuery = "INSERT INTO actor " +
+			"(first_name, last_name) " +
+			"OUTPUT INSERTED.actor_id, INSERTED.first_name, INSERTED.last_name " +
+			"VALUES (@p1, @p2), (@p3, @p4)"
+
+		tt.wantArgs = []any{
+			"bob", "the builder",
+			"alice", "in wonderland",
+		}
+		tt.assert(t)
+
+	})
 }
 
 func TestInsertQuery(t *testing.T) {
