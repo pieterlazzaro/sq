@@ -176,6 +176,12 @@ type Time interface {
 	IsTime()
 }
 
+// Date is a Field of time type.
+type Date interface {
+	Field
+	IsDate()
+}
+
 // UUID is a Field of uuid type.
 type UUID interface {
 	Field
