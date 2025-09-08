@@ -175,13 +175,6 @@ func fetchCursor[T any](ctx context.Context, db DB, query Query, rowmapper func(
 // Next advances the cursor to the next result.
 func (cursor *Cursor[T]) Next() bool {
 
-	// hasNext := cursor.row.sqlRows.Next()
-	// if hasNext {
-	// 	cursor.queryStats.RowCount.Int64++
-	// } else {
-	// 	cursor.log()
-	// }
-	// return hasNext
 	if cursor.hasNext {
 		cursor.hasNext = cursor.row.sqlRows.Next()
 		if cursor.hasNext {
@@ -219,9 +212,9 @@ func (cursor *Cursor[T]) Next() bool {
 		case sqlexp.MsgNextResultSet:
 			cursor.active = cursor.row.sqlRows.NextResultSet()
 		case sqlexp.MsgError:
-
+			cursor.queryStats.Err = m.Error
 		case sqlexp.MsgRowsAffected:
-
+			cursor.queryStats.RowsAffected = sql.NullInt64{Int64: m.Count, Valid: true}
 		}
 	}
 
