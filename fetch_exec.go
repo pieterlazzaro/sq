@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/golang-sql/sqlexp"
 )
 
 // Default dialect used by all queries (if no dialect is explicitly provided).
@@ -27,6 +29,10 @@ type Cursor[T any] struct {
 	logged        int32
 	fieldNames    []string
 	resultsBuffer *bytes.Buffer
+	active        bool
+	hasNext       bool
+	messages      []string
+	returnMsg     *sqlexp.ReturnMessage
 }
 
 // FetchCursor returns a new cursor.
@@ -70,6 +76,9 @@ func fetchCursor[T any](ctx context.Context, db DB, query Query, rowmapper func(
 			Params:   make(map[string][]int),
 			RowCount: sql.NullInt64{Valid: true},
 		},
+		hasNext:   dialect != DialectSQLServer,
+		active:    true,
+		returnMsg: &sqlexp.ReturnMessage{},
 	}
 
 	// If the query is dynamic, call the rowmapper to populate row.fields and
@@ -113,7 +122,17 @@ func fetchCursor[T any](ctx context.Context, db DB, query Query, rowmapper func(
 	if cursor.logSettings.IncludeTime {
 		cursor.queryStats.StartedAt = time.Now()
 	}
-	cursor.row.sqlRows, cursor.queryStats.Err = db.QueryContext(ctx, cursor.queryStats.Query, cursor.queryStats.Args...)
+
+	// Add the return message to the arguments
+	args := []any{}
+	args = append(args, cursor.queryStats.Args...)
+
+	if cursor.queryStats.Dialect == DialectSQLServer {
+		args = append(args, cursor.returnMsg)
+	}
+
+	cursor.row.sqlRows, cursor.queryStats.Err = db.QueryContext(ctx, cursor.queryStats.Query, args...)
+
 	if cursor.logSettings.IncludeTime {
 		cursor.queryStats.TimeTaken = time.Since(cursor.queryStats.StartedAt)
 	}
@@ -155,13 +174,59 @@ func fetchCursor[T any](ctx context.Context, db DB, query Query, rowmapper func(
 
 // Next advances the cursor to the next result.
 func (cursor *Cursor[T]) Next() bool {
-	hasNext := cursor.row.sqlRows.Next()
-	if hasNext {
-		cursor.queryStats.RowCount.Int64++
-	} else {
-		cursor.log()
+
+	// hasNext := cursor.row.sqlRows.Next()
+	// if hasNext {
+	// 	cursor.queryStats.RowCount.Int64++
+	// } else {
+	// 	cursor.log()
+	// }
+	// return hasNext
+	if cursor.hasNext {
+		cursor.hasNext = cursor.row.sqlRows.Next()
+		if cursor.hasNext {
+			cursor.queryStats.RowCount.Int64++
+		} else {
+			cursor.log()
+		}
+
+		return cursor.hasNext
 	}
-	return hasNext
+
+	if cursor.queryStats.Dialect != DialectSQLServer {
+		return cursor.hasNext
+	}
+
+	for cursor.active {
+		msg := cursor.returnMsg.Message(cursor.ctx)
+		switch m := msg.(type) {
+		case sqlexp.MsgNotice:
+			cursor.messages = append(cursor.messages, m.Message.String())
+		case sqlexp.MsgNext:
+
+			cursor.hasNext = cursor.row.sqlRows.Next()
+
+			if cursor.hasNext {
+				cursor.queryStats.RowCount.Int64++
+			} else {
+				cursor.log()
+			}
+
+			if cursor.hasNext {
+				return cursor.hasNext
+			}
+
+		case sqlexp.MsgNextResultSet:
+			cursor.active = cursor.row.sqlRows.NextResultSet()
+		case sqlexp.MsgError:
+
+		case sqlexp.MsgRowsAffected:
+
+		}
+	}
+
+	return cursor.hasNext
+
 }
 
 // RowCount returns the current row number so far.
@@ -381,6 +446,9 @@ func (compiledFetch *CompiledFetch[T]) fetchCursor(ctx context.Context, db DB, p
 			Args:    compiledFetch.args,
 			Params:  compiledFetch.params,
 		},
+		hasNext:   compiledFetch.dialect != DialectSQLServer,
+		active:    true,
+		returnMsg: &sqlexp.ReturnMessage{},
 	}
 
 	// Call the rowmapper to populate row.scanDest.
@@ -596,7 +664,10 @@ func (preparedFetch *PreparedFetch[T]) fetchCursor(ctx context.Context, params P
 			Params:   preparedFetch.compiledFetch.params,
 			RowCount: sql.NullInt64{Valid: true},
 		},
-		logger: preparedFetch.logger,
+		logger:    preparedFetch.logger,
+		hasNext:   preparedFetch.compiledFetch.dialect != DialectSQLServer,
+		active:    true,
+		returnMsg: &sqlexp.ReturnMessage{},
 	}
 
 	// If the query is dynamic, call the rowmapper to populate row.scanDest.
